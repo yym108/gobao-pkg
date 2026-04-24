@@ -27,7 +27,7 @@ func TestRunHealthz(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		b, _ := io.ReadAll(resp.Body)
 		return resp.StatusCode == 200 && string(b) == "ok"
 	}, 2*time.Second, 50*time.Millisecond)
@@ -49,7 +49,7 @@ func TestRunReadyz(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		b, _ := io.ReadAll(resp.Body)
 		return resp.StatusCode == 200 && string(b) == "ok"
 	}, 2*time.Second, 50*time.Millisecond)
@@ -70,7 +70,7 @@ func TestRunGracefulShutdown(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return resp.StatusCode == 200
 	}, 2*time.Second, 50*time.Millisecond)
 
