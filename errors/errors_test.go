@@ -32,6 +32,30 @@ func TestWrap_preservesUnderlying(t *testing.T) {
 	assert.Equal(t, "NOT_FOUND: load user: sql: no rows", err.Error())
 }
 
+// ---------- IsCode + 新 Code 测试 ----------
+
+func TestIsCode_MatchesWrappedError(t *testing.T) {
+	base := errors.New(errors.CodeConflict, "duplicate")
+	wrapped := stderrors.Join(stderrors.New("outer"), base)
+	assert.True(t, errors.IsCode(wrapped, errors.CodeConflict), "expect IsCode to match wrapped *Error")
+}
+
+func TestIsCode_NotMatch(t *testing.T) {
+	assert.False(t, errors.IsCode(errors.New(errors.CodeNotFound, "x"), errors.CodeConflict))
+}
+
+func TestIsCode_NilOrPlainError(t *testing.T) {
+	assert.False(t, errors.IsCode(nil, errors.CodeNotFound))
+	assert.False(t, errors.IsCode(stderrors.New("plain"), errors.CodeNotFound))
+}
+
+func TestNewCodes_HaveGRPCMapping(t *testing.T) {
+	for _, c := range []errors.Code{errors.CodeFailedPrecondition, errors.CodeAborted} {
+		s := errors.ToGRPCStatus(errors.New(c, "x"))
+		require.NotNil(t, s, "code %s missing grpc mapping", c)
+	}
+}
+
 func TestToGRPCStatus_mapsAllCodes(t *testing.T) {
 	cases := []struct {
 		name string
