@@ -10,7 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yym/gobao-pkg/cache"
+	"github.com/yym108/gobao-pkg/cache"
 )
 
 // testDB 使用 DB 15 （16 个 DB 里的最后一个， 通常保留给测试），

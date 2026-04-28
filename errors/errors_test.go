@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
-	"github.com/yym/gobao-pkg/errors"
+	"github.com/yym108/gobao-pkg/errors"
 )
 
 func TestNew_basic(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/yym/gobao-pkg/cache"
+	"github.com/yym108/gobao-pkg/cache"
 )
 
 func TestNewClient_pingOK(t *testing.T) {
