@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -28,6 +29,7 @@ type Server struct {
 	opts   Options      // 启动配置
 	grpc   *grpc.Server // gRPC 服务实例
 	http   *http.Server // HTTP 服务实例（healthz、readyz、metrics）
+	mu     sync.Mutex   // 保护 httpLn/grpcLn 的并发读写
 	httpLn net.Listener // HTTP 监听器
 	grpcLn net.Listener // gRPC 监听器
 }
@@ -40,37 +42,46 @@ func New(name string, opts Options) *Server {
 }
 
 // HTTPListenAddr 返回 HTTP 实际监听地址（端口为 0 时用于获取自动分配的端口）。
-// Run 尚未执行时返回空字符串。
+// Run 尚未执行时返回空字符串。并发安全。
 func (s *Server) HTTPListenAddr() string {
-	if s.httpLn == nil {
+	s.mu.Lock()
+	ln := s.httpLn
+	s.mu.Unlock()
+	if ln == nil {
 		return ""
 	}
-	return s.httpLn.Addr().String()
+	return ln.Addr().String()
 }
 
 // GRPCListenAddr 返回 gRPC 实际监听地址。
-// Run 尚未执行时返回空字符串。
+// Run 尚未执行时返回空字符串。并发安全。
 func (s *Server) GRPCListenAddr() string {
-	if s.grpcLn == nil {
+	s.mu.Lock()
+	ln := s.grpcLn
+	s.mu.Unlock()
+	if ln == nil {
 		return ""
 	}
-	return s.grpcLn.Addr().String()
+	return ln.Addr().String()
 }
 
 // Run 启动 gRPC + HTTP 并阻塞，直到 ctx 取消（优雅关停）或某个服务出错。
 // 执行流程：Listen → 注册 gRPC 服务 → 注册 HTTP 路由 → 并发 Serve → 等待退出信号。
 //   - ctx: 上下文，取消时触发优雅关停
 func (s *Server) Run(ctx context.Context) error {
-	var err error
 	// 1. 监听端口（先 Listen 再 Serve，方便获取实际端口号）
-	s.grpcLn, err = net.Listen("tcp", s.opts.GRPCAddr)
+	grpcLn, err := net.Listen("tcp", s.opts.GRPCAddr)
 	if err != nil {
 		return err
 	}
-	s.httpLn, err = net.Listen("tcp", s.opts.HTTPAddr)
+	httpLn, err := net.Listen("tcp", s.opts.HTTPAddr)
 	if err != nil {
 		return err
 	}
+	s.mu.Lock()
+	s.grpcLn = grpcLn
+	s.httpLn = httpLn
+	s.mu.Unlock()
 
 	// 2. 创建 gRPC server，传入拦截器等选项
 	s.grpc = grpc.NewServer(s.opts.GRPCOpts...)
